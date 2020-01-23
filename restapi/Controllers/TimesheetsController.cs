@@ -264,7 +264,7 @@ namespace restapi.Controllers
                     return StatusCode(409, new InvalidStateError() { });
                 }
                 
-                if(timecard.Employee == cancellation.Person){
+                if(timecard.Status == TimecardStatus.Draft && timecard.Employee != cancellation.Person){
                     return StatusCode(409, new InvalidStateError() { });
                 }
                 
