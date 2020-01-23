@@ -172,6 +172,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Submit(Guid id, [FromBody] Submittal submittal)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -193,7 +194,7 @@ namespace restapi.Controllers
                 // Timecard employee cannot submit other's timecard
                 if(timecard.Employee != submittal.Person)
                 {
-                    return StatusCode(409, new InvalidStateError() { });
+                    return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(submittal, TimecardStatus.Submitted);
@@ -251,6 +252,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Cancel(Guid id, [FromBody] Cancellation cancellation)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -265,7 +267,7 @@ namespace restapi.Controllers
                 }
                 
                 if(timecard.Status == TimecardStatus.Draft && timecard.Employee != cancellation.Person){
-                    return StatusCode(409, new InvalidStateError() { });
+                     return StatusCode(401, new AuthorizationError() { });
                 }
                 
                 var transition = new Transition(cancellation, TimecardStatus.Cancelled);
@@ -290,6 +292,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Correct(Guid id, [FromBody] Cancellation cancellation)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -299,9 +302,14 @@ namespace restapi.Controllers
             if (timecard != null)
             {
                 
-                if (timecard.Status != TimecardStatus.Submitted && timecard.Employee != cancellation.Person)
+                if (timecard.Status != TimecardStatus.Submitted)
                 {
                     return StatusCode(409, new InvalidStateError() { });
+                }
+
+                if (timecard.Employee != cancellation.Person)
+                {
+                     return StatusCode(401, new AuthorizationError() { });
                 }
                 
                 var transition = new Transition(cancellation,TimecardStatus.Draft);
@@ -359,6 +367,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Reject(Guid id, [FromBody] Rejection rejection)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -375,7 +384,7 @@ namespace restapi.Controllers
                 // A Person cannot reject his own timecard
                 if(timecard.Employee == rejection.Person)
                 {
-                    return StatusCode(409, new InvalidStateError() { });
+                     return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(rejection, TimecardStatus.Rejected);
@@ -433,6 +442,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Approve(Guid id, [FromBody] Approval approval)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -449,7 +459,7 @@ namespace restapi.Controllers
                 // Timecard employee cannot approve his own timecard
                 if(timecard.Employee == approval.Person)
                 {
-                    return StatusCode(409, new InvalidStateError() { });
+                     return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(approval, TimecardStatus.Approved);
