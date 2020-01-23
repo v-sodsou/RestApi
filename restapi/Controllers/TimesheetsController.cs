@@ -172,6 +172,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Submit(Guid id, [FromBody] Submittal submittal)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -188,6 +189,12 @@ namespace restapi.Controllers
                 if (timecard.Lines.Count < 1)
                 {
                     return StatusCode(409, new EmptyTimecardError() { });
+                }
+
+                // Timecard employee cannot submit other's timecard
+                if(timecard.Employee != submittal.Person)
+                {
+                    return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(submittal, TimecardStatus.Submitted);
@@ -245,6 +252,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Cancel(Guid id, [FromBody] Cancellation cancellation)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -257,10 +265,56 @@ namespace restapi.Controllers
                 {
                     return StatusCode(409, new InvalidStateError() { });
                 }
-
+                
+                if(timecard.Status == TimecardStatus.Draft && timecard.Employee != cancellation.Person){
+                     return StatusCode(401, new AuthorizationError() { });
+                }
+                
                 var transition = new Transition(cancellation, TimecardStatus.Cancelled);
-
+                
                 logger.LogInformation($"Adding cancellation transition {transition}");
+
+                timecard.Transitions.Add(transition);
+
+                repository.Update(timecard);
+
+                return Ok(transition);
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpPost("{id:guid}/correction")]
+        [Produces(ContentTypes.Transition)]
+        [ProducesResponseType(typeof(Transition), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
+        public IActionResult Correct(Guid id, [FromBody] Cancellation cancellation)
+        {
+            logger.LogInformation($"Looking for timesheet {id}");
+
+            Timecard timecard = repository.Find(id);
+
+            if (timecard != null)
+            {
+                
+                if (timecard.Status != TimecardStatus.Submitted)
+                {
+                    return StatusCode(409, new InvalidStateError() { });
+                }
+
+                if (timecard.Employee != cancellation.Person)
+                {
+                     return StatusCode(401, new AuthorizationError() { });
+                }
+                
+                var transition = new Transition(cancellation,TimecardStatus.Draft);
+
+                logger.LogInformation($"Adding correction transition {transition}");
 
                 timecard.Transitions.Add(transition);
 
@@ -313,6 +367,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Reject(Guid id, [FromBody] Rejection rejection)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -324,6 +379,12 @@ namespace restapi.Controllers
                 if (timecard.Status != TimecardStatus.Submitted)
                 {
                     return StatusCode(409, new InvalidStateError() { });
+                }
+
+                // A Person cannot reject his own timecard
+                if(timecard.Employee == rejection.Person)
+                {
+                     return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(rejection, TimecardStatus.Rejected);
@@ -381,6 +442,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(AuthorizationError), 401)]
         public IActionResult Approve(Guid id, [FromBody] Approval approval)
         {
             logger.LogInformation($"Looking for timesheet {id}");
@@ -392,6 +454,12 @@ namespace restapi.Controllers
                 if (timecard.Status != TimecardStatus.Submitted)
                 {
                     return StatusCode(409, new InvalidStateError() { });
+                }
+
+                // Timecard employee cannot approve his own timecard
+                if(timecard.Employee == approval.Person)
+                {
+                     return StatusCode(401, new AuthorizationError() { });
                 }
 
                 var transition = new Transition(approval, TimecardStatus.Approved);
@@ -442,5 +510,91 @@ namespace restapi.Controllers
                 return NotFound();
             }
         }
+
+        [HttpPost("{id:guid}/lines/{lineId:guid}")]
+        [Produces(ContentTypes.TimesheetLine)]
+        [ProducesResponseType(typeof(TimecardLine), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult ReplaceLine(Guid id, Guid lineId, [FromBody] DocumentLine documentLine)
+        {
+            logger.LogInformation($"Looking for timesheet {id}");
+          
+            Timecard timecard = repository.Find(id);
+      
+            if (timecard != null && timecard.HasLine(lineId))
+            {
+                if (timecard.Status != TimecardStatus.Draft)
+                {
+                    return StatusCode(409, new InvalidStateError() { });
+                }
+
+                // Check for Line on Timecard
+                TimecardLine timecardLine = timecard.GetLine(lineId);
+             
+                // Delete Existing Line from Timecard
+                timecard.RemoveLine(timecardLine);
+
+                // Add New Line
+                var updatedLine = timecard.AddLine(documentLine);
+                repository.Update(timecard);
+
+                return Ok(updatedLine);
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpPatch("{id:guid}/lines/{lineId:guid}")]
+        [Produces(ContentTypes.TimesheetLine)]
+        [ProducesResponseType(typeof(TimecardLine), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult UpdateLine(Guid id, Guid lineId, [FromBody] DocumentLine documentLine)
+        {
+            logger.LogInformation($"Looking for timesheet {id}");
+
+            Timecard timecard = repository.Find(id);
+
+            if (timecard != null && timecard.HasLine(lineId))
+            {
+                if (timecard.Status != TimecardStatus.Draft)
+                {
+                    return StatusCode(409, new InvalidStateError() { });
+                }
+                
+                TimecardLine timecardLine = timecard.GetLine(lineId);
+                // Update day
+                if(documentLine.Day != null)
+                    timecardLine.Day = documentLine.Day;
+
+                // Update week
+                if(documentLine.Week != -1)
+                    timecardLine.Week = documentLine.Week;
+
+                // Update year
+                if(documentLine.Year != -1)
+                    timecardLine.Year = documentLine.Year;
+
+                // Update hours
+                if(documentLine.Hours != -1)
+                    timecardLine.Hours = documentLine.Hours;
+
+                // Update project
+                if(documentLine.Project != null)
+                    timecardLine.Project = documentLine.Project;
+
+                repository.Update(timecard);
+
+                return Ok(timecardLine);
+            }
+            else
+            {
+                return NotFound();
+            }
+        }
+
     }
 }
