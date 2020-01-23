@@ -557,12 +557,6 @@ namespace restapi.Controllers
                 return NotFound();
             }
 
-            // logger.LogInformation($"Looking for timesheet line {lineId}");
-            // TimecardLine annotatedTimecardLine = timecard.GetLine(lineId);
-            // if(annotatedTimecardLine == null ){
-            //     return NotFound();
-            // }
-
             if (timecard != null && timecard.HasLine(lineId))
             {
                 if (timecard.Status != TimecardStatus.Draft)
