@@ -153,7 +153,7 @@ namespace restapi.Models
                     break;
 
                 case TimecardStatus.Cancelled:
-                    // terminal state, nothing possible here
+                    
                     links.Add(new ActionLink()
                     {
                         Method = Method.Delete,
