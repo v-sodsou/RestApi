@@ -100,6 +100,7 @@ namespace restapi.Models
                     links.Add(new ActionLink()
                     {
                         Method = Method.Post,
+                        Type = ContentTypes.TimesheetLine,
                         Relationship = ActionRelationship.ReplaceLine,
                         Reference = $"/timesheets/{UniqueIdentifier}/lines/{UniqueIdentifier}"
                     });
@@ -107,6 +108,7 @@ namespace restapi.Models
                     links.Add(new ActionLink()
                     {
                         Method = Method.Patch,
+                        Type = ContentTypes.TimesheetLine,
                         Relationship = ActionRelationship.UpdateLine,
                         Reference = $"/timesheets/{UniqueIdentifier}/lines/{UniqueIdentifier}"
                     });
