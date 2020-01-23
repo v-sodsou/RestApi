@@ -304,11 +304,6 @@ namespace restapi.Controllers
                     return StatusCode(409, new InvalidStateError() { });
                 }
                 
-                // Timecard employee can cancel and correct his own timecard
-                if(timecard.Employee != cancellation.Person){
-                    return StatusCode(409, new InvalidStateError() { });
-                }
-
                 var transition = new Transition(cancellation,TimecardStatus.Draft);
 
                 logger.LogInformation($"Adding correction transition {transition}");
