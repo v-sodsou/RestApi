@@ -525,11 +525,10 @@ namespace restapi.Controllers
                 }
 
                 // Check for Line on Timecard
-                TimecardLine annotatedTimecardLine = timecard.GetLine(lineId);
+                TimecardLine timecardLine = timecard.GetLine(lineId);
              
                 // Delete Existing Line from Timecard
-                timecard.RemoveLine(annotatedTimecardLine);
-                Console.WriteLine("Standard Numeric Format Specifiers");
+                timecard.RemoveLine(timecardLine);
 
                 // Add New Line
                 var updatedLine = timecard.AddLine(documentLine);
@@ -553,9 +552,6 @@ namespace restapi.Controllers
             logger.LogInformation($"Looking for timesheet {id}");
 
             Timecard timecard = repository.Find(id);
-            if (timecard == null) {
-                return NotFound();
-            }
 
             if (timecard != null && timecard.HasLine(lineId))
             {
@@ -564,30 +560,30 @@ namespace restapi.Controllers
                     return StatusCode(409, new InvalidStateError() { });
                 }
                 
-                TimecardLine annotatedTimecardLine = timecard.GetLine(lineId);
+                TimecardLine timecardLine = timecard.GetLine(lineId);
                 // Update day
                 if(documentLine.Day != null)
-                    annotatedTimecardLine.Day = documentLine.Day;
+                    timecardLine.Day = documentLine.Day;
 
                 // Update week
                 if(documentLine.Week != -1)
-                    annotatedTimecardLine.Week = documentLine.Week;
+                    timecardLine.Week = documentLine.Week;
 
                 // Update year
                 if(documentLine.Year != -1)
-                    annotatedTimecardLine.Year = documentLine.Year;
+                    timecardLine.Year = documentLine.Year;
 
                 // Update hours
                 if(documentLine.Hours != -1)
-                    annotatedTimecardLine.Hours = documentLine.Hours;
+                    timecardLine.Hours = documentLine.Hours;
 
                 // Update project
                 if(documentLine.Project != null)
-                    annotatedTimecardLine.Project = documentLine.Project;
+                    timecardLine.Project = documentLine.Project;
 
                 repository.Update(timecard);
 
-                return Ok(annotatedTimecardLine);
+                return Ok(timecardLine);
             }
             else
             {
