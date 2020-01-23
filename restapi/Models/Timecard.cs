@@ -90,9 +90,38 @@ namespace restapi.Models
                         Reference = $"/timesheets/{UniqueIdentifier}/lines"
                     });
 
+                    links.Add(new ActionLink()
+                    {
+                        Method = Method.Delete,
+                        Relationship = ActionRelationship.Remove,
+                        Reference = $"/timesheets/{UniqueIdentifier}"
+                    });
+
+                    links.Add(new ActionLink()
+                    {
+                        Method = Method.Post,
+                        Relationship = ActionRelationship.ReplaceLine,
+                        Reference = $"/timesheets/{UniqueIdentifier}/lines/{UniqueIdentifier}"
+                    });
+
+                    links.Add(new ActionLink()
+                    {
+                        Method = Method.Patch,
+                        Relationship = ActionRelationship.UpdateLine,
+                        Reference = $"/timesheets/{UniqueIdentifier}/lines/{UniqueIdentifier}"
+                    });
+
                     break;
 
                 case TimecardStatus.Submitted:
+                    links.Add(new ActionLink()
+                    {
+                        Method = Method.Post,
+                        Type = ContentTypes.Cancellation,
+                        Relationship = ActionRelationship.ReturnForCorrection,
+                        Reference = $"/timesheets/{UniqueIdentifier}/correction"
+                    });
+
                     links.Add(new ActionLink()
                     {
                         Method = Method.Post,
@@ -125,6 +154,12 @@ namespace restapi.Models
 
                 case TimecardStatus.Cancelled:
                     // terminal state, nothing possible here
+                    links.Add(new ActionLink()
+                    {
+                        Method = Method.Delete,
+                        Relationship = ActionRelationship.Remove,
+                        Reference = $"/timesheets/{UniqueIdentifier}"
+                    });
                     break;
             }
 
@@ -188,10 +223,18 @@ namespace restapi.Models
                 .Any(l => l.UniqueIdentifier == lineId);
         }
 
-
         public override string ToString()
         {
             return PublicJsonSerializer.SerializeObjectIndented(this);
+        }
+
+        public TimecardLine GetLine(Guid lineId)
+        {
+            return Lines.Where(l => l.UniqueIdentifier == lineId).First();
+        }
+
+        public void RemoveLine(TimecardLine line) {
+            Lines.Remove(line);
         }
     }
 }
